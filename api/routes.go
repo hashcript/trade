@@ -1,10 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-	"com.trader/database"
-	"com.trader/users"
-	"com.trader/models"
+    "time"
+    "github.com/gin-gonic/gin"
+    "com.trader/database"
+    "com.trader/users"
+    "com.trader/models"
 )
 
 type APIRouter struct {
@@ -94,17 +95,23 @@ func (r *APIRouter) SetupRoutes() *gin.Engine {
 			}
 
 			// Settings routes
-			settings := protected.Group("/settings")
+            settings := protected.Group("/settings")
 			{
-				settings.GET("/", r.GetSettings)
-				settings.PUT("/", r.UpdateSettings)
+                // Support both with and without trailing slash
+                settings.GET("/", r.GetSettings)
+                settings.PUT("/", r.UpdateSettings)
+                settings.GET("", r.GetSettings)
+                settings.PUT("", r.UpdateSettings)
 			}
 
 			// Leverage routes
-			leverage := protected.Group("/leverage")
+            leverage := protected.Group("/leverage")
 			{
+                // Support both with and without trailing slash
                 leverage.GET("/", r.GetLeverage)
                 leverage.PUT("/", r.UpdateLeverage)
+                leverage.GET("", r.GetLeverage)
+                leverage.PUT("", r.UpdateLeverage)
 			}
 		}
 	}
@@ -248,7 +255,31 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
 		return
 	}
 
-    c.JSON(200, gin.H{"trading_pairs": pairs})
+    // Shape response to match frontend spec
+    response := make([]gin.H, 0, len(pairs))
+    for _, p := range pairs {
+        response = append(response, gin.H{
+            "id":               p.ID,
+            "symbol":           p.Symbol,
+            "base_asset":       p.BaseAsset,
+            "quote_asset":      p.QuoteAsset,
+            // The following fields are placeholders until pricing/category data is wired
+            "name":             p.BaseAsset,
+            "value_usd":        0,
+            "percentage_change": 0,
+            "high_24h":         0,
+            "low_24h":          0,
+            "volume_24h":       0,
+            "category_id":      0,
+            "category":         "",
+            "logo_url":         "",
+            // Keep timestamps for possible frontend display
+            "created_at":        p.CreatedAt.Format(time.RFC3339),
+            "updated_at":        p.UpdatedAt.Format(time.RFC3339),
+        })
+    }
+
+    c.JSON(200, gin.H{"trading_pairs": response})
 }
 
 // Market price-data per spec (mocked from transactions/prices placeholder)

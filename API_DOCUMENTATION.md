@@ -157,6 +157,33 @@ Notes:
 GET /market/trading-pairs
 Authorization: Bearer <token>
 ```
+Query params:
+- `category_id` (optional): Filter by category
+
+Response:
+```json
+{
+  "trading_pairs": [
+    {
+      "id": 1,
+      "symbol": "BTC/USD",
+      "base_asset": "BTC",
+      "quote_asset": "USD",
+      "name": "Bitcoin",
+      "value_usd": 0,
+      "percentage_change": 0,
+      "high_24h": 0,
+      "low_24h": 0,
+      "volume_24h": 0,
+      "category_id": 0,
+      "category": "",
+      "logo_url": "",
+      "created_at": "2025-10-01T04:29:41Z",
+      "updated_at": "2025-10-01T04:29:41Z"
+    }
+  ]
+}
+```
 
 #### Get Price Data (pending implementation)
 ```http
@@ -179,8 +206,8 @@ Authorization: Bearer <token>
 
 #### Get/Update Settings
 ```http
-GET /settings/
-PUT /settings/
+GET /settings  (also supports /settings/)
+PUT /settings  (also supports /settings/)
 Authorization: Bearer <token>
 ```
 
@@ -193,8 +220,8 @@ Authorization: Bearer <token>
 
 #### Get/Update Leverage
 ```http
-GET /leverage/
-PUT /leverage/
+GET /leverage  (also supports /leverage/)
+PUT /leverage  (also supports /leverage/)
 Authorization: Bearer <token>
 ```
 
