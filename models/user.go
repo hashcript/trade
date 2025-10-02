@@ -23,8 +23,7 @@ type User struct {
 	Leverage   int     `json:"leverage" gorm:"default:1"`
 	RiskLevel  string  `json:"risk_level" gorm:"type:varchar(20);default:medium"` // low, medium, high
 
-    // Wallet/KYC related fields
-    WalletAddress  string     `json:"wallet_address" gorm:"type:varchar(100);uniqueIndex"`
+    // KYC related fields
     IsNewUser      bool       `json:"is_new_user" gorm:"-"`
     KYCStatus      string     `json:"kyc_status" gorm:"type:varchar(20);default:not_submitted"` // not_submitted, pending, approved, rejected
     KYCVerifiedAt  *time.Time `json:"kyc_verified_at"`
@@ -58,8 +57,7 @@ type UserResponse struct {
 	RiskLevel string    `json:"risk_level"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-    // Wallet/KYC additions (used by new endpoints)
-    WalletAddress string     `json:"wallet_address,omitempty"`
+    // KYC additions (used by new endpoints)
     KYCStatus     string     `json:"kyc_status,omitempty"`
     KYCVerifiedAt *time.Time `json:"kyc_verified_at,omitempty"`
 }

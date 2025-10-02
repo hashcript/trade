@@ -23,7 +23,7 @@ POST /auth/wallet/challenge
 Content-Type: application/json
 
 {
-  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
 }
 ```
 
@@ -34,7 +34,7 @@ Content-Type: application/json
 
 {
   "challenge_id": "chall_abc123xyz",
-  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
   "signature": "0x8f3d2c1b..."
 }
 ```
@@ -47,7 +47,6 @@ Response (example):
   "expires_in": 3600,
   "user": {
     "user_id": 1,
-    "wallet_address": "0x742d...",
     "is_new_user": true,
     "kyc_status": "not_submitted",
     "can_trade": false,
@@ -147,6 +146,9 @@ Content-Type: application/json
 GET /trading/profit-statistics
 Authorization: Bearer <token>
 ```
+Notes:
+- Returns an array of daily/periodic PnL aggregates per user.
+- Each entry SHOULD include timestamp, realized/unrealized profit, and fees if applicable.
 
 ### Market Data
 
@@ -161,6 +163,11 @@ Authorization: Bearer <token>
 GET /market/price-data/{pair_id}
 Authorization: Bearer <token>
 ```
+Query params:
+- `start_time` (required): ISO-8601 or unix seconds; defines the beginning of the window.
+- `interval` (optional, default `1h`): supported values `1m,5m,15m,1h,4h,1d`.
+Response notes:
+- `price_data` is an array of points `[timestamp, price]`. Timestamp is unix seconds.
 
 #### Get Market Overview (pending implementation)
 ```http

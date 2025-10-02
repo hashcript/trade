@@ -58,14 +58,14 @@ func (h *UserHandlers) Login(c *gin.Context) {
 // Wallet auth: request challenge
 func (h *UserHandlers) RequestWalletChallenge(c *gin.Context) {
     var req struct{
-        WalletAddress string `json:"wallet_address" binding:"required"`
+        Address string `json:"address" binding:"required"`
     }
     if err := database.Bind(c, &req); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": database.NewValidatorError(err)})
         return
     }
 
-    resp, err := h.authService.CreateWalletChallenge(req.WalletAddress)
+    resp, err := h.authService.CreateWalletChallenge(req.Address)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
@@ -77,7 +77,7 @@ func (h *UserHandlers) RequestWalletChallenge(c *gin.Context) {
 func (h *UserHandlers) VerifyWalletSignature(c *gin.Context) {
     var req struct{
         ChallengeID string `json:"challenge_id" binding:"required"`
-        WalletAddress string `json:"wallet_address" binding:"required"`
+        Address string `json:"address" binding:"required"`
         Signature string `json:"signature" binding:"required"`
     }
     if err := database.Bind(c, &req); err != nil {
@@ -85,7 +85,7 @@ func (h *UserHandlers) VerifyWalletSignature(c *gin.Context) {
         return
     }
 
-    resp, err := h.authService.VerifyWalletChallenge(c, req.ChallengeID, req.WalletAddress, req.Signature)
+    resp, err := h.authService.VerifyWalletChallenge(c, req.ChallengeID, req.Address, req.Signature)
     if err != nil {
         c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
         return
@@ -147,8 +147,8 @@ func (h *UserHandlers) UpdateProfile(c *gin.Context) {
 	}
 
 	var req struct {
-		FirstName string  `json:"first_name"`
-		LastName  string  `json:"last_name"`
+        FirstName string  `json:"first_name"`
+        LastName  string  `json:"last_name"`
 		RiskLevel string  `json:"risk_level"`
 		Leverage  int     `json:"leverage"`
 	}
@@ -160,14 +160,14 @@ func (h *UserHandlers) UpdateProfile(c *gin.Context) {
 
 	db := database.GetConnection()
 
-	// Update user fields
+    // Disallow first_name and last_name updates per spec
+    if req.FirstName != "" || req.LastName != "" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Updating first_name and last_name is not allowed"})
+        return
+    }
+
+    // Update user fields (allowed subset)
 	updates := make(map[string]interface{})
-	if req.FirstName != "" {
-		updates["first_name"] = req.FirstName
-	}
-	if req.LastName != "" {
-		updates["last_name"] = req.LastName
-	}
 	if req.RiskLevel != "" {
 		updates["risk_level"] = req.RiskLevel
 	}

@@ -1,10 +1,10 @@
 # Trader API
 
-A modular Go-based trading platform API with JWT authentication, designed for frontend integration.
+A modular Go-based trading platform API with JWT authentication and KYC-first wallet-based authentication, designed for frontend integration.
 
 ## Features
 
-- 🔐 JWT-based authentication
+- 🔐 JWT-based authentication (wallet-based sign-in; KYC required for live trading)
 - 👤 User management with profiles
 - 💰 Trading accounts and transactions
 - 📊 Profit statistics and analytics
@@ -31,7 +31,7 @@ Trader/
 │   ├── trading.go        # Trading-related models
 │   └── go.mod
 ├── users/                 # User authentication and management
-│   ├── auth.go           # JWT authentication logic
+│   ├── auth.go           # JWT & wallet authentication logic
 │   ├── handlers.go       # User-related HTTP handlers
 │   └── go.mod
 ├── main.go               # Application entry point
@@ -109,21 +109,35 @@ Trader/
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/v1/auth/register` - Register a new user
-- `POST /api/v1/auth/login` - Login user
+### Authentication & KYC
+- `POST /api/v1/auth/wallet/challenge` - Request wallet sign-in challenge
+- `POST /api/v1/auth/wallet/verify` - Verify signature and get tokens
+- `POST /api/v1/auth/token/refresh` - Refresh access token
+- `POST /api/v1/auth/logout` - Logout session
+- `POST /api/v1/kyc/submit` - Submit KYC documents (multipart) [pending]
+- `GET /api/v1/kyc/status` - Get current KYC status [pending]
+- `GET /api/v1/kyc/history` - Get KYC submission history [pending]
 
 ### User Management
 - `GET /api/v1/user/profile` - Get user profile
 - `PUT /api/v1/user/profile` - Update user profile
+- `GET /api/v1/user/platform-activities` - Get platform activities
 
 ### Trading
 - `GET /api/v1/trading/accounts` - Get user accounts
-- `GET /api/v1/trading/transactions` - Get user transactions
-- `POST /api/v1/trading/transactions` - Create new transaction
+- `GET /api/v1/trading/orders` - Get user orders
+- `POST /api/v1/trading/orders` - Create new order
 - `GET /api/v1/trading/profit-statistics` - Get profit statistics
-- `GET /api/v1/trading/platform-activities` - Get platform activities
-- `GET /api/v1/trading/trading-pairs` - Get available trading pairs
+
+### Market
+- `GET /api/v1/market/trading-pairs` - Get available trading pairs
+- `GET /api/v1/market/price-data/{pair_id}` - Get price data [pending]
+- `GET /api/v1/market/overview` - Get market overview [pending]
+
+### Wallet (pending)
+- `GET /api/v1/wallet/balances` - Get wallet balances
+- `GET /api/v1/wallet/get-wallets` - Get wallet addresses
+- `POST /api/v1/wallet/deposit` - Deposit to wallet
 
 ### Settings
 - `GET /api/v1/settings/` - Get user settings

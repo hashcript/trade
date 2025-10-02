@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// helper formatting functions reused by handlers
+func formatAmount(v float64) string {
+    return fmt.Sprintf("%.2f", v)
+}
+
 // CORSMiddleware sets up CORS for frontend communication
 func CORSMiddleware() gin.HandlerFunc {
 	config := cors.Config{
