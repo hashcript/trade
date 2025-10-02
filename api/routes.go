@@ -72,8 +72,8 @@ func (r *APIRouter) SetupRoutes() *gin.Engine {
             trading := protected.Group("/trading")
 			{
 				trading.GET("/accounts", r.GetAccounts)
-                trading.GET("/orders", r.GetTransactions)
-                trading.POST("/orders", r.CreateTransaction)
+				trading.GET("/orders", r.GetTransactions)
+				trading.POST("/orders", r.CreateTransaction)
 				trading.GET("/profit-statistics", r.GetProfitStatistics)
 			}
 
@@ -87,11 +87,25 @@ func (r *APIRouter) SetupRoutes() *gin.Engine {
 			// Security
 			protected.GET("/security", r.GetSecurity)
 			protected.PUT("/security", r.UpdateSecurity)
+			// Trailing slash aliases for security as well
+			protected.GET("/security/", r.GetSecurity)
+			protected.PUT("/security/", r.UpdateSecurity)
 
-			// Wallet balances
+			// Wallet routes
 			wallet := protected.Group("/wallet")
 			{
 				wallet.GET("/balances", r.GetWalletBalances)
+				wallet.GET("/get-wallets", r.GetWalletAddresses)
+				wallet.POST("/deposit", r.CreateWalletDeposit)
+			}
+
+			// KYC routes
+			kyc := protected.Group("/kyc")
+			{
+				kyc.POST("/submit", r.SubmitKYC)
+				kyc.PUT("/submit", r.SubmitKYC)
+				kyc.GET("/status", r.GetKYCStatus)
+				kyc.GET("/history", r.GetKYCHistory)
 			}
 
 			// Settings routes
@@ -258,21 +272,48 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
     // Shape response to match frontend spec
     response := make([]gin.H, 0, len(pairs))
     for _, p := range pairs {
+        // simple symbol meta mapping; replace with real data source later
+        name := p.BaseAsset
+        logo := ""
+        categoryID := 1
+        category := "Digital Assets"
+        valueUSD := 0.0
+        pct := 0.0
+        high := 0.0
+        low := 0.0
+        vol := 0.0
+        switch p.BaseAsset {
+        case "BTC":
+            name = "Bitcoin"
+            logo = "https://assets.trustwallet.com/blockchains/bitcoin/info/logo.png"
+            valueUSD = 100000
+            pct = 2.34
+            high = 101500
+            low = 98000
+            vol = 125000000
+        case "ETH":
+            name = "Ethereum"
+            logo = "https://assets.trustwallet.com/blockchains/ethereum/info/logo.png"
+            valueUSD = 3500
+            pct = -1.5
+            high = 3600
+            low = 3450
+            vol = 85000000
+        }
         response = append(response, gin.H{
             "id":               p.ID,
             "symbol":           p.Symbol,
             "base_asset":       p.BaseAsset,
             "quote_asset":      p.QuoteAsset,
-            // The following fields are placeholders until pricing/category data is wired
-            "name":             p.BaseAsset,
-            "value_usd":        0,
-            "percentage_change": 0,
-            "high_24h":         0,
-            "low_24h":          0,
-            "volume_24h":       0,
-            "category_id":      0,
-            "category":         "",
-            "logo_url":         "",
+            "name":             name,
+            "value_usd":        valueUSD,
+            "percentage_change": pct,
+            "high_24h":         high,
+            "low_24h":          low,
+            "volume_24h":       vol,
+            "category_id":      categoryID,
+            "category":         category,
+            "logo_url":         logo,
             // Keep timestamps for possible frontend display
             "created_at":        p.CreatedAt.Format(time.RFC3339),
             "updated_at":        p.UpdatedAt.Format(time.RFC3339),
@@ -302,6 +343,65 @@ func (r *APIRouter) GetPriceData(c *gin.Context) {
         "interval":   interval,
         "price_data": [][]interface{}{{1727789022, 100000}, {1727789025, 100010}},
     })
+}
+
+// Wallet list/address endpoint (stub)
+func (r *APIRouter) GetWalletAddresses(c *gin.Context) {
+    wallets := []gin.H{
+        {"wallet_id": 1, "pair_id": 4, "symbol": "BTC", "address": "bc1qxyz...", "network": "Bitcoin"},
+        {"wallet_id": 2, "pair_id": 20, "symbol": "USDT", "address": "0xabc123...", "network": "Ethereum (ERC20)"},
+    }
+    c.JSON(200, gin.H{"wallets": wallets})
+}
+
+// Wallet deposit endpoint (stub)
+func (r *APIRouter) CreateWalletDeposit(c *gin.Context) {
+    var req struct {
+        WalletID int     `json:"wallet_id" binding:"required"`
+        Amount   float64 `json:"amount" binding:"required"`
+    }
+    if err := database.Bind(c, &req); err != nil {
+        c.JSON(400, gin.H{"error": database.NewValidatorError(err)})
+        return
+    }
+    c.JSON(201, gin.H{
+        "deposit_id": "dep_abc123",
+        "wallet_id": req.WalletID,
+        "amount":     req.Amount,
+        "status":     "completed",
+        "created_at": time.Now().UTC().Format(time.RFC3339),
+    })
+}
+
+// KYC submit (stub)
+func (r *APIRouter) SubmitKYC(c *gin.Context) {
+    c.JSON(200, gin.H{
+        "kyc_submission_id": "kyc_sub_abc123",
+        "status":            "processing",
+        "submitted_at":      time.Now().UTC().Format(time.RFC3339),
+        "estimated_processing_time": "2-24 hours",
+    })
+}
+
+// KYC status (stub)
+func (r *APIRouter) GetKYCStatus(c *gin.Context) {
+    c.JSON(200, gin.H{
+        "kyc_submission_id": "kyc_sub_abc123",
+        "status":            "pending",
+        "submitted_at":      time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339),
+        "processing_stage":  "document_verification",
+        "estimated_completion": time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339),
+        "can_trade": false,
+    })
+}
+
+// KYC history (stub)
+func (r *APIRouter) GetKYCHistory(c *gin.Context) {
+    subs := []gin.H{
+        {"kyc_submission_id": "kyc_sub_old1", "status": "rejected", "submitted_at": time.Now().AddDate(0, -1, 0).UTC().Format(time.RFC3339), "processed_at": time.Now().AddDate(0, -1, 0).Add(4 * time.Hour).UTC().Format(time.RFC3339), "rejection_reason": "Document expired"},
+        {"kyc_submission_id": "kyc_sub_abc123", "status": "pending", "submitted_at": time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)},
+    }
+    c.JSON(200, gin.H{"submissions": subs})
 }
 
 // Security endpoints per spec (backed by Settings fields as placeholder)
