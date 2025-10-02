@@ -29,6 +29,8 @@ func main() {
 		&models.ProfitStatistics{},
 		&models.PlatformActivity{},
 		&models.Settings{},
+		&models.KYCSubmission{},
+		&models.AuthChallenge{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}

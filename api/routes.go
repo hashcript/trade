@@ -41,31 +41,47 @@ func (r *APIRouter) SetupRoutes() *gin.Engine {
 		// Public routes (no authentication required)
 		public := v1.Group("/")
 		{
-			public.POST("/auth/register", r.userHandlers.Register)
-			public.POST("/auth/login", r.userHandlers.Login)
+            // Legacy auth (kept for now)
+            public.POST("/auth/register", r.userHandlers.Register)
+            public.POST("/auth/login", r.userHandlers.Login)
+
+            // Wallet auth
+            public.POST("/auth/wallet/challenge", r.userHandlers.RequestWalletChallenge)
+            public.POST("/auth/wallet/verify", r.userHandlers.VerifyWalletSignature)
+            public.POST("/auth/token/refresh", r.userHandlers.RefreshToken)
 		}
 
 		// Protected routes (authentication required)
 		protected := v1.Group("/")
 		protected.Use(r.userHandlers.AuthMiddleware())
 		{
+            // Session
+            protected.POST("/auth/logout", r.userHandlers.Logout)
+
 			// User routes
 			user := protected.Group("/user")
 			{
 				user.GET("/profile", r.userHandlers.GetProfile)
 				user.PUT("/profile", r.userHandlers.UpdateProfile)
+                // Platform activities under user per spec
+                user.GET("/platform-activities", r.GetPlatformActivities)
 			}
 
 			// Trading routes
-			trading := protected.Group("/trading")
+            trading := protected.Group("/trading")
 			{
 				trading.GET("/accounts", r.GetAccounts)
-				trading.GET("/transactions", r.GetTransactions)
-				trading.POST("/transactions", r.CreateTransaction)
+                trading.GET("/orders", r.GetTransactions)
+                trading.POST("/orders", r.CreateTransaction)
 				trading.GET("/profit-statistics", r.GetProfitStatistics)
-				trading.GET("/platform-activities", r.GetPlatformActivities)
-				trading.GET("/trading-pairs", r.GetTradingPairs)
 			}
+
+            // Market data
+            market := protected.Group("/market")
+            {
+                market.GET("/trading-pairs", r.GetTradingPairs)
+                // price-data/{pair_id} and overview to be implemented
+            }
 
 			// Settings routes
 			settings := protected.Group("/settings")
@@ -77,8 +93,8 @@ func (r *APIRouter) SetupRoutes() *gin.Engine {
 			// Leverage routes
 			leverage := protected.Group("/leverage")
 			{
-				leverage.GET("/", r.GetLeverage)
-				leverage.PUT("/", r.UpdateLeverage)
+                leverage.GET("/", r.GetLeverage)
+                leverage.PUT("/", r.UpdateLeverage)
 			}
 		}
 	}

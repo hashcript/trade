@@ -116,3 +116,33 @@ type Settings struct {
 	// Relations
 	User User `json:"user" gorm:"foreignKey:UserID;references:ID"`
 }
+
+// KYCSubmission represents a user's KYC submission lifecycle
+type KYCSubmission struct {
+    ID          uint           `json:"kyc_submission_id" gorm:"primaryKey"`
+    UserID      uint           `json:"user_id" gorm:"not null;index"`
+    Status      string         `json:"status" gorm:"type:varchar(20);default:pending"` // pending, processing, manual_review, approved, rejected
+    DocumentType string        `json:"document_type" gorm:"type:varchar(50)"`
+    RejectionReason string     `json:"rejection_reason" gorm:"type:varchar(255)"`
+    SubmittedAt time.Time      `json:"submitted_at"`
+    ProcessedAt *time.Time     `json:"processed_at"`
+    ApprovedAt  *time.Time     `json:"approved_at"`
+    RejectedAt  *time.Time     `json:"rejected_at"`
+    CreatedAt   time.Time      `json:"created_at"`
+    UpdatedAt   time.Time      `json:"updated_at"`
+    DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+
+    User User `json:"user" gorm:"foreignKey:UserID;references:ID"`
+}
+
+// AuthChallenge stores wallet sign-in challenges
+type AuthChallenge struct {
+    ID           uint      `json:"-" gorm:"primaryKey"`
+    ChallengeID  string    `json:"challenge_id" gorm:"type:varchar(64);uniqueIndex"`
+    WalletAddress string   `json:"wallet_address" gorm:"type:varchar(100);index"`
+    Message      string    `json:"message" gorm:"type:text"`
+    Nonce        string    `json:"nonce" gorm:"type:varchar(64)"`
+    ExpiresAt    time.Time `json:"expires_at"`
+    CreatedAt    time.Time `json:"created_at"`
+    UpdatedAt    time.Time `json:"updated_at"`
+}

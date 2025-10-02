@@ -8,9 +8,9 @@ import (
 
 type User struct {
 	ID        uint           `json:"id" gorm:"primaryKey"`
-	Email     string         `json:"email" gorm:"type:varchar(255);uniqueIndex;not null" validate:"required,email"`
-	Username  string         `json:"username" gorm:"type:varchar(50);uniqueIndex;not null" validate:"required,min=3,max=20"`
-	Password  string         `json:"-" gorm:"type:varchar(255);not null" validate:"required,min=6"`
+    Email     string         `json:"email" gorm:"type:varchar(255);uniqueIndex;"`
+    Username  string         `json:"username" gorm:"type:varchar(50);uniqueIndex;"`
+    Password  string         `json:"-" gorm:"type:varchar(255);"`
 	FirstName string         `json:"first_name" gorm:"type:varchar(100)" validate:"required"`
 	LastName  string         `json:"last_name" gorm:"type:varchar(100)" validate:"required"`
 	IsActive  bool           `json:"is_active" gorm:"default:true"`
@@ -22,6 +22,15 @@ type User struct {
 	Balance    float64 `json:"balance" gorm:"default:0"`
 	Leverage   int     `json:"leverage" gorm:"default:1"`
 	RiskLevel  string  `json:"risk_level" gorm:"type:varchar(20);default:medium"` // low, medium, high
+
+    // Wallet/KYC related fields
+    WalletAddress  string     `json:"wallet_address" gorm:"type:varchar(100);uniqueIndex"`
+    IsNewUser      bool       `json:"is_new_user" gorm:"-"`
+    KYCStatus      string     `json:"kyc_status" gorm:"type:varchar(20);default:not_submitted"` // not_submitted, pending, approved, rejected
+    KYCVerifiedAt  *time.Time `json:"kyc_verified_at"`
+    KYCSubmittedAt *time.Time `json:"kyc_submitted_at"`
+    KYCRejectedAt  *time.Time `json:"kyc_rejected_at"`
+    KYCRejection   string     `json:"rejection_reason" gorm:"type:varchar(255)"`
 }
 
 type UserLoginRequest struct {
@@ -49,6 +58,10 @@ type UserResponse struct {
 	RiskLevel string    `json:"risk_level"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+    // Wallet/KYC additions (used by new endpoints)
+    WalletAddress string     `json:"wallet_address,omitempty"`
+    KYCStatus     string     `json:"kyc_status,omitempty"`
+    KYCVerifiedAt *time.Time `json:"kyc_verified_at,omitempty"`
 }
 
 type AuthResponse struct {

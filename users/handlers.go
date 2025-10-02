@@ -55,6 +55,64 @@ func (h *UserHandlers) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, authResponse)
 }
 
+// Wallet auth: request challenge
+func (h *UserHandlers) RequestWalletChallenge(c *gin.Context) {
+    var req struct{
+        WalletAddress string `json:"wallet_address" binding:"required"`
+    }
+    if err := database.Bind(c, &req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": database.NewValidatorError(err)})
+        return
+    }
+
+    resp, err := h.authService.CreateWalletChallenge(req.WalletAddress)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, resp)
+}
+
+// Wallet auth: verify signature
+func (h *UserHandlers) VerifyWalletSignature(c *gin.Context) {
+    var req struct{
+        ChallengeID string `json:"challenge_id" binding:"required"`
+        WalletAddress string `json:"wallet_address" binding:"required"`
+        Signature string `json:"signature" binding:"required"`
+    }
+    if err := database.Bind(c, &req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": database.NewValidatorError(err)})
+        return
+    }
+
+    resp, err := h.authService.VerifyWalletChallenge(c, req.ChallengeID, req.WalletAddress, req.Signature)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, resp)
+}
+
+// Token refresh
+func (h *UserHandlers) RefreshToken(c *gin.Context) {
+    var req struct{ RefreshToken string `json:"refresh_token" binding:"required"` }
+    if err := database.Bind(c, &req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": database.NewValidatorError(err)})
+        return
+    }
+    resp, err := h.authService.RefreshAccessToken(req.RefreshToken)
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, resp)
+}
+
+// Logout endpoint (stateless placeholder)
+func (h *UserHandlers) Logout(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
+}
+
 // GetProfile returns the current user's profile
 func (h *UserHandlers) GetProfile(c *gin.Context) {
 	user, err := h.authService.GetUserFromToken(c)

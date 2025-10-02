@@ -1,84 +1,93 @@
-# Trader API Documentation
+# Trader API Documentation (KYC-First Wallet Auth)
 
 ## Base URL
 ```
-http://localhost:8080/api/v1
+https://trade.cradlevoices.com/api/v1/
+```
+Local development:
+```
+http://localhost:8080/api/v1/
 ```
 
 ## Authentication
-The API uses JWT (JSON Web Tokens) for authentication. Include the token in the Authorization header:
-
+Include JWT in header:
 ```
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <token>
 ```
 
-## API Endpoints
+### Authentication & KYC
 
-### Authentication
-
-#### Register User
+#### Request Challenge Message
 ```http
-POST /auth/register
+POST /auth/wallet/challenge
 Content-Type: application/json
 
 {
-  "email": "user@example.com",
-  "username": "johndoe",
-  "password": "password123",
-  "first_name": "John",
-  "last_name": "Doe"
+  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
 }
 ```
 
-**Response:**
+#### Verify Signature & Get Token
+```http
+POST /auth/wallet/verify
+Content-Type: application/json
+
+{
+  "challenge_id": "chall_abc123xyz",
+  "wallet_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+  "signature": "0x8f3d2c1b..."
+}
+```
+
+Response (example):
 ```json
 {
-  "message": "User registered successfully",
+  "access_token": "<jwt>",
+  "refresh_token": "<refresh-jwt>",
+  "expires_in": 3600,
   "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "username": "johndoe",
-    "first_name": "John",
-    "last_name": "Doe",
-    "is_active": true,
-    "balance": 10000,
-    "leverage": 1,
-    "risk_level": "medium",
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
+    "user_id": 1,
+    "wallet_address": "0x742d...",
+    "is_new_user": true,
+    "kyc_status": "not_submitted",
+    "can_trade": false,
+    "created_at": "2025-10-01T12:00:00Z"
   }
 }
 ```
 
-#### Login User
+#### Refresh Token
 ```http
-POST /auth/login
+POST /auth/token/refresh
 Content-Type: application/json
 
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
+{ "refresh_token": "<refresh-jwt>" }
 ```
 
-**Response:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "username": "johndoe",
-    "first_name": "John",
-    "last_name": "Doe",
-    "is_active": true,
-    "balance": 10000,
-    "leverage": 1,
-    "risk_level": "medium",
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
-}
+#### Logout
+```http
+POST /auth/logout
+Authorization: Bearer <token>
+```
+
+### KYC
+
+#### Submit KYC Documents (pending implementation)
+```http
+POST /kyc/submit (multipart/form-data)
+Authorization: Bearer <token>
+```
+
+#### Get KYC Status (pending implementation)
+```http
+GET /kyc/status
+Authorization: Bearer <token>
+```
+
+#### Get KYC History (pending implementation)
+```http
+GET /kyc/history
+Authorization: Bearer <token>
 ```
 
 ### User Management
@@ -95,12 +104,21 @@ PUT /user/profile
 Authorization: Bearer <token>
 Content-Type: application/json
 
-{
-  "first_name": "John",
-  "last_name": "Doe",
-  "risk_level": "high",
-  "leverage": 5
-}
+{ "first_name": "John", "last_name": "Doe" }
+```
+
+#### Get Platform Activities
+```http
+GET /user/platform-activities
+Authorization: Bearer <token>
+```
+
+### Wallet Operations (pending implementation)
+
+```http
+GET /wallet/balances
+GET /wallet/get-wallets
+POST /wallet/deposit
 ```
 
 ### Trading
@@ -111,67 +129,17 @@ GET /trading/accounts
 Authorization: Bearer <token>
 ```
 
-**Response:**
-```json
-{
-  "accounts": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "account_type": "demo",
-      "balance": 10000,
-      "equity": 10000,
-      "margin": 0,
-      "free_margin": 10000,
-      "margin_level": 0,
-      "is_active": true,
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
-```
-
-#### Get Transactions
+#### Get Orders
 ```http
-GET /trading/transactions
+GET /trading/orders
 Authorization: Bearer <token>
 ```
 
-**Response:**
-```json
-{
-  "transactions": [
-    {
-      "id": 1,
-      "user_id": 1,
-      "type": "buy",
-      "symbol": "BTC/USD",
-      "amount": 0.1,
-      "price": 50000,
-      "total_value": 5000,
-      "leverage": 1,
-      "status": "completed",
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
-```
-
-#### Create Transaction
+#### Create Order
 ```http
-POST /trading/transactions
+POST /trading/orders
 Authorization: Bearer <token>
 Content-Type: application/json
-
-{
-  "type": "buy",
-  "symbol": "BTC/USD",
-  "amount": 0.1,
-  "price": 50000,
-  "leverage": 1
-}
 ```
 
 #### Get Profit Statistics
@@ -180,107 +148,68 @@ GET /trading/profit-statistics
 Authorization: Bearer <token>
 ```
 
-#### Get Platform Activities
-```http
-GET /trading/platform-activities
-Authorization: Bearer <token>
-```
+### Market Data
 
 #### Get Trading Pairs
 ```http
-GET /trading/trading-pairs
+GET /market/trading-pairs
 Authorization: Bearer <token>
 ```
 
-### Settings
+#### Get Price Data (pending implementation)
+```http
+GET /market/price-data/{pair_id}
+Authorization: Bearer <token>
+```
 
-#### Get User Settings
+#### Get Market Overview (pending implementation)
+```http
+GET /market/overview
+Authorization: Bearer <token>
+```
+
+### Settings & Security
+
+#### Get/Update Settings
 ```http
 GET /settings/
-Authorization: Bearer <token>
-```
-
-#### Update User Settings
-```http
 PUT /settings/
 Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "theme": "dark",
-  "language": "en",
-  "notifications": true,
-  "email_alerts": true,
-  "sms_alerts": false,
-  "two_factor_auth": false,
-  "risk_management": "high",
-  "max_leverage": 20,
-  "auto_close_trades": false
-}
 ```
 
-### Leverage
+#### Get/Update Security (pending implementation)
+```http
+GET /security
+PUT /security
+Authorization: Bearer <token>
+```
 
-#### Get Current Leverage
+#### Get/Update Leverage
 ```http
 GET /leverage/
-Authorization: Bearer <token>
-```
-
-#### Update Leverage
-```http
 PUT /leverage/
 Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "leverage": 10
-}
 ```
 
 ## Error Responses
-
-All error responses follow this format:
-
 ```json
-{
-  "error": "Error message description"
-}
+{ "error": "message" }
 ```
 
 Common HTTP status codes:
-- `200` - Success
-- `201` - Created
-- `400` - Bad Request
-- `401` - Unauthorized
-- `404` - Not Found
-- `429` - Rate Limit Exceeded
-- `500` - Internal Server Error
-
-## Rate Limiting
-
-The API implements rate limiting:
-- 100 requests per minute per IP address
-- Rate limit exceeded returns HTTP 429
-
-## CORS
-
-The API supports CORS for the following origins:
-- `http://localhost:3000`
-- `http://localhost:3001`
-- `http://127.0.0.1:3000`
-- `http://127.0.0.1:3001`
+- 200 Success
+- 201 Created
+- 400 Bad Request
+- 401 Unauthorized
+- 404 Not Found
+- 429 Rate Limit Exceeded
+- 500 Internal Server Error
 
 ## Health Check
-
 ```http
 GET /health
 ```
-
-**Response:**
+Response:
 ```json
-{
-  "status": "ok",
-  "message": "Trader API is running"
-}
+{ "status": "ok", "message": "Trader API is running" }
 ```
