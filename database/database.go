@@ -22,6 +22,7 @@ func Init() *gorm.DB {
 	user := getEnv("DB_USER", "colls")
 	password := getEnv("DB_PASSWORD", "Kali@linux003")
 	dbname := getEnv("DB_NAME", "trade")
+	
 
 	// Build DSN string
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",

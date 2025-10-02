@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"time"
+    "strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -291,11 +292,25 @@ func (a *AuthService) VerifyWalletChallenge(c *gin.Context, challengeID, walletA
         return nil, errors.New("invalid signature")
     }
 
-    // Upsert user by wallet address
+    // Upsert user derived from wallet address (no wallet field on User)
+    addrKey := strings.ToLower(walletAddress)
+    derivedUsername := "w_" + addrKey
+    derivedEmail := derivedUsername + "@wallet.local"
+
     var user models.User
-    if err := db.Where("wallet_address = ?", walletAddress).First(&user).Error; err != nil {
+    if err := db.Where("username = ?", derivedUsername).First(&user).Error; err != nil {
         // Create minimal user for wallet login
-        user = models.User{WalletAddress: walletAddress, IsActive: true}
+        user = models.User{
+            Email:     derivedEmail,
+            Username:  derivedUsername,
+            Password:  "", // not used for wallet-auth
+            FirstName: "",
+            LastName:  "",
+            Balance:   10000,
+            Leverage:  1,
+            RiskLevel: "medium",
+            IsActive:  true,
+        }
         if err := db.Create(&user).Error; err != nil {
             return nil, err
         }
@@ -315,12 +330,11 @@ func (a *AuthService) VerifyWalletChallenge(c *gin.Context, challengeID, walletA
 
     // Compose user payload per KYC status
     userPayload := map[string]interface{}{
-        "user_id":        user.ID,
-        "wallet_address": user.WalletAddress,
-        "is_new_user":    false,
-        "kyc_status":     user.KYCStatus,
-        "can_trade":      user.KYCStatus == "approved",
-        "created_at":     user.CreatedAt.Format(time.RFC3339),
+        "user_id":     user.ID,
+        "is_new_user": false,
+        "kyc_status":  user.KYCStatus,
+        "can_trade":   user.KYCStatus == "approved",
+        "created_at":  user.CreatedAt.Format(time.RFC3339),
     }
     if user.KYCVerifiedAt != nil {
         userPayload["kyc_verified_at"] = user.KYCVerifiedAt.Format(time.RFC3339)
