@@ -58,14 +58,14 @@ func (h *UserHandlers) Login(c *gin.Context) {
 // Wallet auth: request challenge
 func (h *UserHandlers) RequestWalletChallenge(c *gin.Context) {
     var req struct{
-        Address string `json:"address" binding:"required"`
+        WalletAddress string `json:"wallet_address" binding:"required"`
     }
     if err := database.Bind(c, &req); err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": database.NewValidatorError(err)})
         return
     }
 
-    resp, err := h.authService.CreateWalletChallenge(req.Address)
+    resp, err := h.authService.CreateWalletChallenge(req.WalletAddress)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return

@@ -299,6 +299,22 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
             high = 3600
             low = 3450
             vol = 85000000
+        case "LTC":
+            name = "Litecoin"
+            logo = "https://assets.trustwallet.com/blockchains/litecoin/info/logo.png"
+            valueUSD = 75
+            pct = 1.2
+            high = 78
+            low = 72
+            vol = 15000000
+        case "ADA":
+            name = "Cardano"
+            logo = "https://assets.trustwallet.com/blockchains/cardano/info/logo.png"
+            valueUSD = 0.45
+            pct = -0.8
+            high = 0.47
+            low = 0.43
+            vol = 25000000
         }
         response = append(response, gin.H{
             "id":               p.ID,
@@ -312,7 +328,7 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
             "low_24h":          low,
             "volume_24h":       vol,
             "category_id":      categoryID,
-            "category":         category,
+            "category_name":    category,
             "logo_url":         logo,
             // Keep timestamps for possible frontend display
             "created_at":        p.CreatedAt.Format(time.RFC3339),
@@ -347,11 +363,18 @@ func (r *APIRouter) GetPriceData(c *gin.Context) {
 
 // Wallet list/address endpoint (stub)
 func (r *APIRouter) GetWalletAddresses(c *gin.Context) {
+    user := c.MustGet("user").(*models.User)
+    
     wallets := []gin.H{
         {"wallet_id": 1, "pair_id": 4, "symbol": "BTC", "address": "bc1qxyz...", "network": "Bitcoin"},
         {"wallet_id": 2, "pair_id": 20, "symbol": "USDT", "address": "0xabc123...", "network": "Ethereum (ERC20)"},
     }
-    c.JSON(200, gin.H{"wallets": wallets})
+    
+    c.JSON(200, gin.H{
+        "wallets": wallets,
+        "user_id": user.ID,
+        "count": len(wallets),
+    })
 }
 
 // Wallet deposit endpoint (stub)
@@ -375,10 +398,45 @@ func (r *APIRouter) CreateWalletDeposit(c *gin.Context) {
 
 // KYC submit (stub)
 func (r *APIRouter) SubmitKYC(c *gin.Context) {
+    user := c.MustGet("user").(*models.User)
+    db := database.GetConnection()
+    
+    var req struct {
+        DocumentType string `json:"document_type" binding:"required"`
+        DocumentData string `json:"document_data" binding:"required"`
+    }
+    
+    if err := database.Bind(c, &req); err != nil {
+        c.JSON(400, gin.H{"error": database.NewValidatorError(err)})
+        return
+    }
+    
+    // Create KYC submission
+    kycSubmission := models.KYCSubmission{
+        UserID:       user.ID,
+        Status:       "pending",
+        DocumentType: req.DocumentType,
+        SubmittedAt:  time.Now().UTC(),
+    }
+    
+    if err := db.Create(&kycSubmission).Error; err != nil {
+        c.JSON(500, gin.H{"error": "Failed to submit KYC"})
+        return
+    }
+    
+    // Update user KYC status
+    if err := db.Model(user).Updates(map[string]interface{}{
+        "kyc_status":       "pending",
+        "kyc_submitted_at": time.Now().UTC(),
+    }).Error; err != nil {
+        c.JSON(500, gin.H{"error": "Failed to update user KYC status"})
+        return
+    }
+    
     c.JSON(200, gin.H{
-        "kyc_submission_id": "kyc_sub_abc123",
-        "status":            "processing",
-        "submitted_at":      time.Now().UTC().Format(time.RFC3339),
+        "kyc_submission_id": kycSubmission.ID,
+        "status":            "pending",
+        "submitted_at":      kycSubmission.SubmittedAt.Format(time.RFC3339),
         "estimated_processing_time": "2-24 hours",
     })
 }
@@ -414,8 +472,8 @@ func (r *APIRouter) GetSecurity(c *gin.Context) {
         return
     }
     c.JSON(200, gin.H{
-        "requirePin": settings.TwoFactorAuth,
-        "privacyMode": false,
+        "require_pin": settings.TwoFactorAuth,
+        "privacy_mode": false,
     })
 }
 
@@ -423,8 +481,8 @@ func (r *APIRouter) UpdateSecurity(c *gin.Context) {
     user := c.MustGet("user").(*models.User)
     db := database.GetConnection()
     var req struct {
-        RequirePin  bool `json:"requirePin"`
-        PrivacyMode bool `json:"privacyMode"`
+        RequirePin  bool `json:"require_pin"`
+        PrivacyMode bool `json:"privacy_mode"`
     }
     if err := database.Bind(c, &req); err != nil {
         c.JSON(400, gin.H{"error": database.NewValidatorError(err)})
@@ -437,25 +495,37 @@ func (r *APIRouter) UpdateSecurity(c *gin.Context) {
         return
     }
     c.JSON(200, gin.H{
-        "requirePin": req.RequirePin,
-        "privacyMode": req.PrivacyMode,
+        "require_pin": req.RequirePin,
+        "privacy_mode": req.PrivacyMode,
     })
 }
 
 // Wallet balances per spec (placeholder)
 func (r *APIRouter) GetWalletBalances(c *gin.Context) {
+    user := c.MustGet("user").(*models.User)
     includeZero := c.DefaultQuery("include_zero_balances", "false") == "true"
+    
     // Placeholder dataset; integrate with real balances later
     wallets := []gin.H{
         {"wallet_id": 24, "pair_id": 20, "symbol": "USDT", "name": "Tether USD", "decimals": 6, "balance": "5000.000000", "balance_usd": "5000.00", "price_usd": "1.00"},
         {"wallet_id": 25, "pair_id": 1, "symbol": "BTC", "name": "Bitcoin", "decimals": 8, "balance": "0.05000000", "balance_usd": "5000.00", "price_usd": "100000.00"},
     }
+    
+    // Filter out zero balances if requested
     if !includeZero {
-        // all have balances in placeholder
+        filteredWallets := make([]gin.H, 0)
+        for _, wallet := range wallets {
+            if balance, ok := wallet["balance"].(string); ok && balance != "0" && balance != "0.000000" && balance != "0.00000000" {
+                filteredWallets = append(filteredWallets, wallet)
+            }
+        }
+        wallets = filteredWallets
     }
+    
     c.JSON(200, gin.H{
         "wallets": wallets,
         "total_balance_usd": "10000.00",
+        "user_id": user.ID,
     })
 }
 
