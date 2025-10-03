@@ -79,7 +79,7 @@ func (h *UserHandlers) RequestWalletChallenge(c *gin.Context) {
 func (h *UserHandlers) VerifyWalletSignature(c *gin.Context) {
     var req struct{
         ChallengeID string `json:"challenge_id" binding:"required"`
-        Address string `json:"address" binding:"required"`
+        WalletAddress string `json:"wallet_address" binding:"required"`
         Signature string `json:"signature" binding:"required"`
     }
     if err := database.Bind(c, &req); err != nil {
@@ -87,7 +87,7 @@ func (h *UserHandlers) VerifyWalletSignature(c *gin.Context) {
         return
     }
 
-    resp, err := h.authService.VerifyWalletChallenge(c, req.ChallengeID, req.Address, req.Signature)
+    resp, err := h.authService.VerifyWalletChallenge(c, req.ChallengeID, req.WalletAddress, req.Signature)
     if err != nil {
         c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
         return

@@ -300,26 +300,35 @@ func (a *AuthService) VerifyWalletChallenge(c *gin.Context, challengeID, walletA
 
     var user models.User
     if err := db.Where("wallet_address = ?", walletAddress).First(&user).Error; err != nil {
-        // Create minimal user for wallet login
-        user = models.User{
-            Email:         derivedEmail,
-            Username:      derivedUsername,
-            Password:      "", // not used for wallet-auth
-            WalletAddress: walletAddress,
-            FirstName:     "",
-            LastName:      "",
-            Balance:       10000,
-            Leverage:      1,
-            RiskLevel:     "medium",
-            IsActive:      true,
-            KYCStatus:     "not_submitted",
+        // Check if user exists with derived username (for backward compatibility)
+        if err2 := db.Where("username = ?", derivedUsername).First(&user).Error; err2 != nil {
+            // Create minimal user for wallet login
+            user = models.User{
+                Email:         derivedEmail,
+                Username:      derivedUsername,
+                Password:      "", // not used for wallet-auth
+                WalletAddress: walletAddress,
+                FirstName:     "",
+                LastName:      "",
+                Balance:       10000,
+                Leverage:      1,
+                RiskLevel:     "medium",
+                IsActive:      true,
+                KYCStatus:     "not_submitted",
+            }
+            if err := db.Create(&user).Error; err != nil {
+                return nil, err
+            }
+            // Create default demo account and settings
+            db.Create(&models.Account{UserID: user.ID, AccountType: "demo", Balance: 10000, Equity: 10000, IsActive: true})
+            db.Create(&models.Settings{UserID: user.ID, Theme: "light", Language: "en", Notifications: true, EmailAlerts: true, RiskManagement: "medium", MaxLeverage: 10})
+        } else {
+            // User exists but doesn't have wallet_address set, update it
+            if user.WalletAddress == "" {
+                db.Model(&user).Update("wallet_address", walletAddress)
+                user.WalletAddress = walletAddress
+            }
         }
-        if err := db.Create(&user).Error; err != nil {
-            return nil, err
-        }
-        // Create default demo account and settings
-        db.Create(&models.Account{UserID: user.ID, AccountType: "demo", Balance: 10000, Equity: 10000, IsActive: true})
-        db.Create(&models.Settings{UserID: user.ID, Theme: "light", Language: "en", Notifications: true, EmailAlerts: true, RiskManagement: "medium", MaxLeverage: 10})
     }
 
     access, err := a.GenerateToken(&user)

@@ -23,6 +23,11 @@ func Init() *gorm.DB {
 	password := getEnv("DB_PASSWORD", "Kali@linux003")
 	dbname := getEnv("DB_NAME", "trade")
 	/*
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnv("DB_PORT", "3306")
+	user := getEnv("DB_USER", "colls")
+	password := getEnv("DB_PASSWORD", "Kali@linux003")
+	dbname := getEnv("DB_NAME", "trade")
 	
 
 	*/
