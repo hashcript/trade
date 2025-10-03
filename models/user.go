@@ -11,12 +11,15 @@ type User struct {
     Email     string         `json:"email" gorm:"type:varchar(255);uniqueIndex;"`
     Username  string         `json:"username" gorm:"type:varchar(50);uniqueIndex;"`
     Password  string         `json:"-" gorm:"type:varchar(255);"`
-	FirstName string         `json:"first_name" gorm:"type:varchar(100)" validate:"required"`
-	LastName  string         `json:"last_name" gorm:"type:varchar(100)" validate:"required"`
+	FirstName string         `json:"first_name" gorm:"type:varchar(100)"`
+	LastName  string         `json:"last_name" gorm:"type:varchar(100)"`
 	IsActive  bool           `json:"is_active" gorm:"default:true"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+
+	// Wallet authentication
+	WalletAddress string `json:"wallet_address" gorm:"type:varchar(100);index"`
 
 	// Trading related fields
 	Balance    float64 `json:"balance" gorm:"default:0"`
@@ -30,6 +33,12 @@ type User struct {
     KYCSubmittedAt *time.Time `json:"kyc_submitted_at"`
     KYCRejectedAt  *time.Time `json:"kyc_rejected_at"`
     KYCRejection   string     `json:"rejection_reason" gorm:"type:varchar(255)"`
+    
+    // Additional KYC fields from OCR
+    DateOfBirth    *time.Time `json:"date_of_birth"`
+    Nationality    string     `json:"nationality" gorm:"type:varchar(10)"`
+    DocumentType   string     `json:"document_type" gorm:"type:varchar(50)"`
+    DocumentNumber string     `json:"document_number" gorm:"type:varchar(50)"`
 }
 
 type UserLoginRequest struct {
@@ -46,20 +55,24 @@ type UserRegisterRequest struct {
 }
 
 type UserResponse struct {
-	ID        uint      `json:"id"`
-	Email     string    `json:"email"`
-	Username  string    `json:"username"`
-	FirstName string    `json:"first_name"`
-	LastName  string    `json:"last_name"`
-	IsActive  bool      `json:"is_active"`
-	Balance   float64   `json:"balance"`
-	Leverage  int       `json:"leverage"`
-	RiskLevel string    `json:"risk_level"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-    // KYC additions (used by new endpoints)
-    KYCStatus     string     `json:"kyc_status,omitempty"`
-    KYCVerifiedAt *time.Time `json:"kyc_verified_at,omitempty"`
+	UserID        string     `json:"user_id"`
+	WalletAddress string     `json:"wallet_address,omitempty"`
+	IsNewUser     bool       `json:"is_new_user"`
+	KYCStatus     string     `json:"kyc_status"`
+	KYCRequired   bool       `json:"kyc_required,omitempty"`
+	KYCVerifiedAt *time.Time `json:"kyc_verified_at,omitempty"`
+	KYCSubmittedAt *time.Time `json:"kyc_submitted_at,omitempty"`
+	KYCRejectedAt *time.Time `json:"kyc_rejected_at,omitempty"`
+	RejectionReason string   `json:"rejection_reason,omitempty"`
+	CanResubmit   bool       `json:"can_resubmit,omitempty"`
+	FirstName     *string    `json:"first_name"`
+	LastName      *string    `json:"last_name"`
+	DateOfBirth   *time.Time `json:"date_of_birth,omitempty"`
+	Nationality   string     `json:"nationality,omitempty"`
+	DocumentType  string     `json:"document_type,omitempty"`
+	DocumentNumber string    `json:"document_number,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
+	CanTrade      bool       `json:"can_trade"`
 }
 
 type AuthResponse struct {

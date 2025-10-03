@@ -1,7 +1,9 @@
 package users
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"com.trader/database"
@@ -121,21 +123,34 @@ func (h *UserHandlers) GetProfile(c *gin.Context) {
 		return
 	}
 
-	userResponse := models.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Username:  user.Username,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		IsActive:  user.IsActive,
-		Balance:   user.Balance,
-		Leverage:  user.Leverage,
-		RiskLevel: user.RiskLevel,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+	response := gin.H{
+		"user_id":     fmt.Sprintf("usr_%d", user.ID),
+		"kyc_status":  user.KYCStatus,
+		"created_at":  user.CreatedAt.Format(time.RFC3339),
+		"can_trade":   user.KYCStatus == "approved",
 	}
 
-	c.JSON(http.StatusOK, userResponse)
+	// Add KYC-specific fields based on status
+	if user.KYCStatus == "approved" {
+		response["kyc_verified_at"] = user.KYCVerifiedAt.Format(time.RFC3339)
+		response["first_name"] = user.FirstName
+		response["last_name"] = user.LastName
+		if user.DateOfBirth != nil {
+			response["date_of_birth"] = user.DateOfBirth.Format("2006-01-02")
+		}
+		response["nationality"] = user.Nationality
+		response["document_type"] = user.DocumentType
+		response["document_number"] = user.DocumentNumber
+	} else if user.KYCStatus == "not_submitted" {
+		response["kyc_required"] = true
+		response["first_name"] = nil
+		response["last_name"] = nil
+	} else {
+		response["first_name"] = nil
+		response["last_name"] = nil
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // UpdateProfile updates the current user's profile
@@ -147,10 +162,8 @@ func (h *UserHandlers) UpdateProfile(c *gin.Context) {
 	}
 
 	var req struct {
-        FirstName string  `json:"first_name"`
-        LastName  string  `json:"last_name"`
-		RiskLevel string  `json:"risk_level"`
-		Leverage  int     `json:"leverage"`
+        FirstName *string `json:"first_name"`
+        LastName  *string `json:"last_name"`
 	}
 
 	if err := database.Bind(c, &req); err != nil {
@@ -160,19 +173,13 @@ func (h *UserHandlers) UpdateProfile(c *gin.Context) {
 
 	db := database.GetConnection()
 
-    // Disallow first_name and last_name updates per spec
-    if req.FirstName != "" || req.LastName != "" {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Updating first_name and last_name is not allowed"})
-        return
-    }
-
-    // Update user fields (allowed subset)
+    // Update user fields
 	updates := make(map[string]interface{})
-	if req.RiskLevel != "" {
-		updates["risk_level"] = req.RiskLevel
+	if req.FirstName != nil {
+		updates["first_name"] = *req.FirstName
 	}
-	if req.Leverage > 0 {
-		updates["leverage"] = req.Leverage
+	if req.LastName != nil {
+		updates["last_name"] = *req.LastName
 	}
 
 	if err := db.Model(user).Updates(updates).Error; err != nil {
@@ -183,24 +190,30 @@ func (h *UserHandlers) UpdateProfile(c *gin.Context) {
 	// Refresh user data
 	db.First(user, user.ID)
 
-	userResponse := models.UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Username:  user.Username,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		IsActive:  user.IsActive,
-		Balance:   user.Balance,
-		Leverage:  user.Leverage,
-		RiskLevel: user.RiskLevel,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+	response := gin.H{
+		"user_id":     fmt.Sprintf("usr_%d", user.ID),
+		"kyc_status":  user.KYCStatus,
+		"created_at":  user.CreatedAt.Format(time.RFC3339),
+		"can_trade":   user.KYCStatus == "approved",
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Profile updated successfully",
-		"user":    userResponse,
-	})
+	// Add KYC-specific fields based on status
+	if user.KYCStatus == "approved" {
+		response["kyc_verified_at"] = user.KYCVerifiedAt.Format(time.RFC3339)
+		response["first_name"] = user.FirstName
+		response["last_name"] = user.LastName
+		if user.DateOfBirth != nil {
+			response["date_of_birth"] = user.DateOfBirth.Format("2006-01-02")
+		}
+		response["nationality"] = user.Nationality
+		response["document_type"] = user.DocumentType
+		response["document_number"] = user.DocumentNumber
+	} else {
+		response["first_name"] = user.FirstName
+		response["last_name"] = user.LastName
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // AuthMiddleware validates JWT tokens

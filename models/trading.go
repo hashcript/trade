@@ -9,19 +9,27 @@ import (
 type Transaction struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	UserID      uint           `json:"user_id" gorm:"not null;index"`
-	Type        string         `json:"type" gorm:"type:varchar(20);not null"` // buy, sell, deposit, withdrawal
-	Symbol      string         `json:"symbol" gorm:"type:varchar(20);not null"` // trading pair like BTC/USD
+	AccountID   uint           `json:"account_id" gorm:"not null;index"`
+	PairID      uint           `json:"pair_id" gorm:"not null"`
+	PairSymbol  string         `json:"pair_symbol" gorm:"type:varchar(20);not null"`
+	Type        string         `json:"type" gorm:"type:varchar(20);not null"` // long, short
 	Amount      float64        `json:"amount" gorm:"not null"`
+	AmountUSDT  float64        `json:"amount_usdt" gorm:"not null"`
 	Price       float64        `json:"price" gorm:"not null"`
+	EntryPrice  float64        `json:"entry_price" gorm:"not null"`
 	TotalValue  float64        `json:"total_value" gorm:"not null"`
 	Leverage    int            `json:"leverage" gorm:"default:1"`
-	Status      string         `json:"status" gorm:"type:varchar(20);default:pending"` // pending, completed, cancelled
+	DeliveryTime string        `json:"delivery_time" gorm:"type:varchar(10)"`
+	PriceRange  int            `json:"price_range" gorm:"default:0"`
+	ProfitLoss  float64        `json:"profit_loss" gorm:"default:0"`
+	Status      string         `json:"status" gorm:"type:varchar(20);default:open"` // open, completed, cancelled
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	// Relations
-	User User `json:"user" gorm:"foreignKey:UserID;references:ID"`
+	User    User    `json:"user" gorm:"foreignKey:UserID;references:ID"`
+	Account Account `json:"account" gorm:"foreignKey:AccountID;references:ID"`
 }
 
 type Account struct {
