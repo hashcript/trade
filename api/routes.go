@@ -2,6 +2,7 @@ package api
 
 import (
     "fmt"
+    "strconv"
     "time"
     "mime/multipart"
     "github.com/gin-gonic/gin"
@@ -331,7 +332,7 @@ func (r *APIRouter) GetUserPlatformActivities(c *gin.Context) {
 
     // Build response per spec
     resp := gin.H{
-        "user_id":       user.ID,
+        "user_id":       fmt.Sprintf("usr_%d", user.ID),
         "registered_on": user.CreatedAt.Format(time.RFC3339),
         "last_login":    user.UpdatedAt.Format(time.RFC3339),
     }
@@ -378,7 +379,7 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
         switch p.BaseAsset {
         case "BTC":
             name = "Bitcoin"
-            logo = "https://assets.trustwallet.com/blockchains/bitcoin/info/logo.png"
+            logo = "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
             valueUSD = 100000
             pct = 2.34
             high = 101500
@@ -386,7 +387,7 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
             vol = 125000000
         case "ETH":
             name = "Ethereum"
-            logo = "https://assets.trustwallet.com/blockchains/ethereum/info/logo.png"
+            logo = "https://cryptologos.cc/logos/ethereum-eth-logo.png"
             valueUSD = 3500
             pct = -1.5
             high = 3600
@@ -394,7 +395,7 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
             vol = 85000000
         case "LTC":
             name = "Litecoin"
-            logo = "https://assets.trustwallet.com/blockchains/litecoin/info/logo.png"
+            logo = "https://cryptologos.cc/logos/litecoin-ltc-logo.png"
             valueUSD = 75
             pct = 1.2
             high = 78
@@ -402,7 +403,7 @@ func (r *APIRouter) GetTradingPairs(c *gin.Context) {
             vol = 15000000
         case "ADA":
             name = "Cardano"
-            logo = "https://assets.trustwallet.com/blockchains/cardano/info/logo.png"
+            logo = "https://cryptologos.cc/logos/cardano-ada-logo.png"
             valueUSD = 0.45
             pct = -0.8
             high = 0.47
@@ -439,18 +440,78 @@ func (r *APIRouter) GetPriceData(c *gin.Context) {
     if interval == "" {
         interval = "1h"
     }
+    
     // start_time is required per spec
     start := c.Query("start_time")
     if start == "" {
         c.JSON(400, gin.H{"error": "start_time is required"})
         return
     }
-    // For now, return a simple placeholder consistent with spec
+    
+    endTime := c.Query("end_time")
+    if endTime == "" {
+        endTime = fmt.Sprintf("%d", time.Now().Unix())
+    }
+    
+    // Get trading pair info
+    db := database.GetConnection()
+    var pair models.TradingPair
+    if err := db.First(&pair, pairID).Error; err != nil {
+        c.JSON(400, gin.H{"error": "Invalid trading pair"})
+        return
+    }
+    
+    // Generate realistic price data based on the trading pair
+    var basePrice float64
+    switch pair.BaseAsset {
+    case "BTC":
+        basePrice = 100000.0
+    case "ETH":
+        basePrice = 3500.0
+    case "LTC":
+        basePrice = 75.0
+    case "ADA":
+        basePrice = 0.45
+    default:
+        basePrice = 100.0
+    }
+    
+    // Generate price data points
+    startTimestamp, _ := strconv.ParseInt(start, 10, 64)
+    endTimestamp, _ := strconv.ParseInt(endTime, 10, 64)
+    
+    var intervalSeconds int64
+    switch interval {
+    case "1m":
+        intervalSeconds = 60
+    case "5m":
+        intervalSeconds = 300
+    case "15m":
+        intervalSeconds = 900
+    case "1h":
+        intervalSeconds = 3600
+    case "4h":
+        intervalSeconds = 14400
+    case "1d":
+        intervalSeconds = 86400
+    default:
+        intervalSeconds = 3600
+    }
+    
+    var priceData [][]interface{}
+    currentPrice := basePrice
+    for timestamp := startTimestamp; timestamp <= endTimestamp; timestamp += intervalSeconds {
+        // Simulate price movement with some volatility
+        change := (float64(timestamp%100) - 50) / 1000.0 // ±5% variation
+        currentPrice = basePrice * (1 + change)
+        priceData = append(priceData, []interface{}{timestamp, currentPrice})
+    }
+    
     c.JSON(200, gin.H{
         "pair_id":    pairID,
-        "symbol":     "BTC/USD",
+        "symbol":     pair.Symbol,
         "interval":   interval,
-        "price_data": [][]interface{}{{1727789022, 100000}, {1727789025, 100010}},
+        "price_data": priceData,
     })
 }
 
@@ -570,25 +631,82 @@ func (r *APIRouter) SubmitKYC(c *gin.Context) {
         return
     }
     
-    // Simulate OCR extraction (in real implementation, this would call OCR service)
-    ocrData := map[string]interface{}{
-        "first_name":       "John",
-        "last_name":        "Doe",
-        "date_of_birth":    "1990-05-15",
-        "nationality":      "US",
-        "document_number":  "P12345678",
-        "document_expiry":  "2030-05-14",
-        "confidence_score": 0.95,
+    // Simulate OCR extraction with realistic data based on document type
+    var ocrData map[string]interface{}
+    var firstName, lastName, nationality, documentNumber string
+    var dateOfBirth time.Time
+    
+    switch documentType[0] {
+    case "passport":
+        firstName = "John"
+        lastName = "Doe"
+        nationality = "US"
+        documentNumber = "P123456789"
+        dateOfBirth = time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC)
+        ocrData = map[string]interface{}{
+            "first_name":       firstName,
+            "last_name":        lastName,
+            "date_of_birth":    dateOfBirth.Format("2006-01-02"),
+            "nationality":      nationality,
+            "document_number":  documentNumber,
+            "document_expiry":  "2030-05-14",
+            "confidence_score": 0.95,
+        }
+    case "national_id":
+        firstName = "Jane"
+        lastName = "Smith"
+        nationality = "GB"
+        documentNumber = "ID123456789"
+        dateOfBirth = time.Date(1985, 8, 22, 0, 0, 0, 0, time.UTC)
+        ocrData = map[string]interface{}{
+            "first_name":       firstName,
+            "last_name":        lastName,
+            "date_of_birth":    dateOfBirth.Format("2006-01-02"),
+            "nationality":      nationality,
+            "document_number":  documentNumber,
+            "document_expiry":  "2035-08-21",
+            "confidence_score": 0.92,
+        }
+    case "drivers_license":
+        firstName = "Michael"
+        lastName = "Johnson"
+        nationality = "CA"
+        documentNumber = "DL987654321"
+        dateOfBirth = time.Date(1992, 12, 3, 0, 0, 0, 0, time.UTC)
+        ocrData = map[string]interface{}{
+            "first_name":       firstName,
+            "last_name":        lastName,
+            "date_of_birth":    dateOfBirth.Format("2006-01-02"),
+            "nationality":      nationality,
+            "document_number":  documentNumber,
+            "document_expiry":  "2027-12-02",
+            "confidence_score": 0.88,
+        }
+    default:
+        firstName = "Unknown"
+        lastName = "User"
+        nationality = "XX"
+        documentNumber = "DOC123456"
+        dateOfBirth = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
+        ocrData = map[string]interface{}{
+            "first_name":       firstName,
+            "last_name":        lastName,
+            "date_of_birth":    dateOfBirth.Format("2006-01-02"),
+            "nationality":      nationality,
+            "document_number":  documentNumber,
+            "document_expiry":  "2030-01-01",
+            "confidence_score": 0.75,
+        }
     }
     
     // Update user with OCR data
     if err := db.Model(user).Updates(map[string]interface{}{
-        "first_name":     "John",
-        "last_name":      "Doe",
-        "date_of_birth":  time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC),
-        "nationality":    "US",
+        "first_name":     firstName,
+        "last_name":      lastName,
+        "date_of_birth":  dateOfBirth,
+        "nationality":    nationality,
         "document_type":  documentType[0],
-        "document_number": "P12345678",
+        "document_number": documentNumber,
     }).Error; err != nil {
         c.JSON(500, gin.H{"error": "Failed to update user with OCR data"})
         return
@@ -636,7 +754,7 @@ func (r *APIRouter) GetSecurity(c *gin.Context) {
     }
     c.JSON(200, gin.H{
         "require_pin": settings.TwoFactorAuth,
-        "privacy_mode": false,
+        "privacy_mode": settings.PrivacyMode,
     })
 }
 
@@ -651,12 +769,17 @@ func (r *APIRouter) UpdateSecurity(c *gin.Context) {
         c.JSON(400, gin.H{"error": database.NewValidatorError(err)})
         return
     }
-    if err := db.Model(&models.Settings{}).Where("user_id = ?", user.ID).Updates(map[string]interface{}{
-        "two_factor_auth": req.RequirePin,
-    }).Error; err != nil {
+    
+    // Update both fields independently
+    updates := make(map[string]interface{})
+    updates["two_factor_auth"] = req.RequirePin
+    updates["privacy_mode"] = req.PrivacyMode
+    
+    if err := db.Model(&models.Settings{}).Where("user_id = ?", user.ID).Updates(updates).Error; err != nil {
         c.JSON(500, gin.H{"error": "Failed to update security"})
         return
     }
+    
     c.JSON(200, gin.H{
         "require_pin": req.RequirePin,
         "privacy_mode": req.PrivacyMode,

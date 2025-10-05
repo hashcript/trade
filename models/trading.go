@@ -114,6 +114,7 @@ type Settings struct {
 	EmailAlerts     bool           `json:"email_alerts" gorm:"default:true"`
 	SmsAlerts       bool           `json:"sms_alerts" gorm:"default:false"`
 	TwoFactorAuth   bool           `json:"two_factor_auth" gorm:"default:false"`
+	PrivacyMode     bool           `json:"privacy_mode" gorm:"default:false"`
 	RiskManagement  string         `json:"risk_management" gorm:"type:varchar(20);default:medium"` // low, medium, high
 	MaxLeverage     int            `json:"max_leverage" gorm:"default:10"`
 	AutoCloseTrades bool           `json:"auto_close_trades" gorm:"default:false"`
